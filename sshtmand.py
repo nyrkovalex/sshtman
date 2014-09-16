@@ -9,45 +9,51 @@ class Listener:
         self.path = path
         self.manager = manager
         self._commands = {
-            'debug': lambda args: self._debug(args),
-            'die': lambda args: self.die(),
+            'debug': self._debug,
+            'die': self._die,
+            'topen': self._topen,
+            'tclose': self._tclose,
         }
-       
-    def die(self):
-        # TODO: shutdown gracefully
-        sys.exit(0)
-    
+
     def listen(self):
         self._create_fifo()
         with open(self.path, 'r') as fifo:
             self._loop(fifo)
         os.unlink(self.path)
-           
+
     def _loop(self, fifo):
-        while True:
+        self._running = True
+        while self._running:
             for line in fifo:
                 self._exec_command(line)
-                    
+
     def _create_fifo(self):
-        sshtman_home = os.path.expanduser(settings.SSHTMAN_HOME)
-        if not os.path.exists(sshtman_home):
-            os.makedirs(sshtman_home)
         if os.path.exists(self.path):
             os.unlink(self.path)
         os.mkfifo(self.path)
-        
+
     def _exec_command(self, cmd_text):
         cmd_spec = json.loads(cmd_text)
         cmd = self._commands[cmd_spec['name']]
         cmd(cmd_spec['args'])
-        
+
     def _debug(self, args):
         print('Debug command called with')
         print(str(args))
 
+    def _die(self, args):
+        self._running = False
+
+    def _topen(self, args):
+        self.manager.open(args['name'], **args['kwargs'])
+
+    def _tclose(self, args):
+        self.manager.close(args['name'])
+
+
 
 class TunnelManager:
-    
+
     def __init__(self):
         self._tunnels = {}
 
@@ -55,7 +61,7 @@ class TunnelManager:
         t = Tunnel(**targs)
         t.open()
         self._tunnels[name] = t
-        
+
     def close(self, name):
         self._tunnels[name].close()
 
@@ -66,23 +72,30 @@ class Tunnel:
                  ssh_port=22):
         self.user = user
         self.host = host
-        self.remote_port = remote_port
-        self.local_port = local_port
+        self.remote_port = str(remote_port)
+        self.local_port = str(local_port)
         self.ssh_port = str(ssh_port)
-    
+
     def open(self):
-        args = ('ssh', self.user + '@' + self.host)
-        self._process = subprocess.Popen(args, stdin=subprocess.PIPE,
-                                         stdout=subprocess.PIPE,
-                                         stderr=subprocess.STDOUT)
-        print('SSH tunnel opened, server said: ' +
-              str(self._process.communicate()))
+        args = self._create_ssh_command()
+        self._process = self._open_process(args)
+        print('SSH tunnel opened')
+
+    def _create_ssh_command(self):
+        return ('ssh', '-N', '-L',
+                self.local_port + ':127.0.0.1:' + self.remote_port,
+                self.user + '@' + self.host)
+
+    def _open_process(self, args):
+        return subprocess.Popen(args, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT)
 
     def close(self):
         self._process.terminate()
-        print('Process completed with code ' + str(self._process.returncode))
+        print('SSH tunnel closed')
 
 
 if __name__ == '__main__':
-    l = Listener(os.path.expanduser(settings.FIFO_PATH), None)
+    l = Listener(os.path.expanduser(settings.FIFO_PATH), TunnelManager())
     l.listen()
