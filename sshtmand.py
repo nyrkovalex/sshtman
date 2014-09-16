@@ -1,6 +1,7 @@
 #! /usr/bin/env python3
 
-import sys, subprocess, os, json, settings
+import sys, subprocess, os, json, shared, time
+from shared import command
 
 
 class Listener:
@@ -26,6 +27,7 @@ class Listener:
         while self._running:
             for line in fifo:
                 self._exec_command(line)
+            time.sleep(shared.CHECK_INTERVAL)
 
     def _create_fifo(self):
         if os.path.exists(self.path):
@@ -37,16 +39,20 @@ class Listener:
         cmd = self._commands[cmd_spec['name']]
         cmd(cmd_spec['args'])
 
+    @command
     def _debug(self, args):
         print('Debug command called with')
         print(str(args))
 
-    def _die(self, args):
+    @command
+    def _die(self):
         self._running = False
 
+    @command
     def _topen(self, args):
         self.manager.open(args['name'], **args['kwargs'])
 
+    @command
     def _tclose(self, args):
         self.manager.close(args['name'])
 
@@ -97,5 +103,5 @@ class Tunnel:
 
 
 if __name__ == '__main__':
-    l = Listener(os.path.expanduser(settings.FIFO_PATH), TunnelManager())
+    l = Listener(os.path.expanduser(shared.FIFO_PATH), TunnelManager())
     l.listen()
