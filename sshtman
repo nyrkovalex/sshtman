@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
-import json, argparse, shared
-from shared import command 
+import argparse
+from libsshtman import Client, FIFO_PATH
 
 def parse_args():
     parser = argparse.ArgumentParser(description='SSH tunnel manager client')
@@ -19,65 +19,10 @@ def parse_args():
     return parser.parse_args()
 
 
-class Client:
+kwargs = vars(parse_args())
+action = kwargs.pop('action')
+tunnel_name = kwargs.pop('tunnel_name')
 
-    def __init__(self, path):
-        self.path = path
-        self._actions = {
-            'kill': self.kill_daemon,
-            'open': self.open_tunnel,
-            'close': self.close_tunnel,
-        }
-
-    def perform_action(self, action, name, **kwargs):
-        self._actions[action](name, **kwargs)
-        
-    @command
-    def open_tunnel(self, name, **kwargs):
-        command = {
-            'name': 'topen',
-            'args': {
-                'name': name,
-                'kwargs': kwargs,
-            },
-        }
-        self.send(command)
-
-    @command
-    def debug(self):
-        self.send({
-            'name': 'debug',
-            'args': { 'debug': True },
-        })
-
-    @command
-    def kill_daemon(self):
-        self.send({
-            'name': 'die',
-            'args': None,
-        })
-
-    @command
-    def close_tunnel(self, name):
-        self.send({
-            'name': 'tclose',
-            'args': {
-                'name': name,
-            },
-        })
-
-    def send(self, cmd):
-        with open(self.path, 'w') as fifo:
-            cmd_text = json.dumps(cmd)
-            print('Sending ' + cmd_text)
-            fifo.write(cmd_text + '\n')
-
-
-if __name__ == '__main__':
-    kwargs = vars(parse_args())
-    action = kwargs.pop('action')
-    tunnel_name = kwargs.pop('tunnel_name')
-
-    c = Client(shared.FIFO_PATH)
-    c.perform_action(action, tunnel_name, **kwargs)
+c = Client(FIFO_PATH)
+c.perform_action(action, tunnel_name, **kwargs)
 
