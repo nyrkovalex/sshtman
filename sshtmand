@@ -1,7 +1,5 @@
 #! /usr/bin/env python3
 
-from libsshtman import TunnelManager, Listener, FIFO_PATH
+from libsshtman import Daemon
 
-
-l = Listener(FIFO_PATH, TunnelManager())
-l.listen()
+Daemon().run()
