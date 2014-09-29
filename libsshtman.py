@@ -93,9 +93,11 @@ class Daemon:
         self._pipe = None
 
     def run(self):
+        _create_fifo(FIFO_PATH)
         with open(FIFO_PATH, 'r') as fifo:
             self._pipe = Pipe(fifo)
             self._listener.listen(self._pipe)
+        os.unlink(FIFO_PATH)
 
     @command
     def debug(self, args):
