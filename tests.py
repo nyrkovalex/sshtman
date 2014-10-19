@@ -43,12 +43,22 @@ class TunnelManagerTest(unittest.TestCase):
     def test_should_log_error_on_tunnel_creation_failure(self, create_tunnel):
         create_tunnel.side_effect = ValueError()
         self.manager.open('test')
-        self.assertTrue(self.logger.exception.called)
+        self.logger.exception.assert_called()
 
     def test_should_log_warning_closing_nonexisting_tunnel(self, create_tunnel):
         self.manager.open('test')
         self.manager.close('foo')
-        self.assertTrue(self.logger.warning.called)
+        self.logger.warning.assert_called()
+
+    def test_should_close_all_tunnels(self, create_tunnel):
+        self.manager._tunnels = {
+            'first': None,
+            'second': None,
+        }
+        self.manager.close = Mock()
+        self.manager.close_all()
+        self.manager.close.assert_any_call('first')
+        self.manager.close.assert_any_call('second')
 
 
 class TunnelTest(unittest.TestCase):

@@ -105,6 +105,7 @@ class Daemon:
 
     @command
     def die(self):
+        self._manager.close_all()
         self._pipe.close()
 
     @command
@@ -175,6 +176,10 @@ class TunnelManager:
         self._tunnels[name].close()
         self._logger.debug('Tunnel %s close' % name)
 
+    def close_all(self):
+        for name in self._tunnels:
+            self.close(name)
+
 
 class Tunnel:
 
@@ -197,7 +202,7 @@ class Tunnel:
         self._process.terminate()
 
     def _create_ssh_command(self):
-        return ('ssh', 
+        return ('ssh',
                 # Ignore fingerprnt check
                 '-o', 'StrictHostKeyChecking=no',
                 # Suppress unknow host output
