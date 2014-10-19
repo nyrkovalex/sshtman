@@ -197,7 +197,12 @@ class Tunnel:
         self._process.terminate()
 
     def _create_ssh_command(self):
-        return ('ssh', '-N', '-L',
+        return ('ssh', 
+                # Ignore fingerprnt check
+                '-o', 'StrictHostKeyChecking=no',
+                # Suppress unknow host output
+                '-o', 'UserKnownHostsFile=/dev/null',
+                '-N', '-L',
                 self.local_port + ':127.0.0.1:' + self.remote_port,
                 self.user + '@' + self.host)
 
